@@ -1,7 +1,9 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, Depends
 from pydantic import BaseModel
 from typing import Optional, List
 from fastapi.middleware.cors import CORSMiddleware
+from database import get_db  # 既存のdatabase.pyからDB接続を取得
+from sqlalchemy.orm import Session
 
 app = FastAPI()
 
@@ -14,30 +16,22 @@ app.add_middleware(
     allow_headers=["*"],  # すべてのヘッダーを許可
 )
 
-# 仮の「商品マスタデータA」
-PRODUCT_MASTER = {
-    "12345678901": {"NAME": "りんご", "PRICE": 100},
-    "23456789012": {"NAME": "バナナ", "PRICE": 150},
-    "34567890123": {"NAME": "オレンジ", "PRICE": 120},
-}
 
+# 商品情報のモデル
 class ProductResponse(BaseModel):
     CODE: str
     NAME: str
     PRICE: Optional[str]
 
 @app.get("/api/product", response_model=ProductResponse)
-def get_product(code: str):
+def get_product(code: str, db: Session = Depends(get_db)):
     """商品コードを受け取り、商品情報を返すAPI"""
-    product = PRODUCT_MASTER.get(code)
-    
+    product = db.execute("SELECT NAME, PRICE FROM product_master WHERE CODE = %s", (code,)).fetchone()
+
     if product:
-        return {"CODE": code, "NAME": product["NAME"], "PRICE": str(product["PRICE"])}
+        return {"CODE": code, "NAME": product[0], "PRICE": str(product[1])}
     else:
         return {"CODE": code, "NAME": "商品がマスタ未登録です", "PRICE": "N/A"}
-
-# 仮のデータベース（辞書をリストで管理）
-PURCHASE_DB = []
 
 # 購入データのモデル
 class PurchaseItem(BaseModel):
@@ -50,11 +44,16 @@ class PurchaseRequest(BaseModel):
     items: List[PurchaseItem]
 
 @app.post("/api/purchase")
-def save_purchase(request: PurchaseRequest):
+def save_purchase(request: PurchaseRequest, db: Session = Depends(get_db)):
     """購入データをDBに保存するAPI"""
     try:
-        # データをDB (仮) に追加
-        PURCHASE_DB.extend(request.items)
+        for item in request.items:
+            db.execute(
+                "INSERT INTO purchase_history (NAME, QUANTITY, PRICE, TOTAL) VALUES (%s, %s, %s, %s)",
+                (item.NAME, item.QUANTITY, item.PRICE, item.TOTAL)
+            )
+        db.commit()
         return {"message": "購入データを保存しました。"}
     except Exception as e:
+        db.rollback()
         raise HTTPException(status_code=500, detail="購入データの保存に失敗しました。")
