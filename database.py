@@ -1,20 +1,36 @@
 from sqlalchemy import create_engine
+from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-from dotenv import load_dotenv
+from sqlalchemy_utils import database_exists, create_database
 import os
+from dotenv import load_dotenv
 
-# 環境変数をロード
 load_dotenv()
 
-# MySQL接続URLを作成
-DATABASE_URL = f"mysql+pymysql://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}@{os.getenv('DB_HOST')}:{os.getenv('DB_PORT', 3306)}/{os.getenv('DB_NAME')}"
+DB_HOST = os.getenv("DB_HOST")
+DB_PORT = os.getenv("DB_PORT")
+DB_NAME = os.getenv("DB_NAME")
+DB_USER = os.getenv("DB_USER")
+DB_PASSWORD = os.getenv("DB_PASSWORD")
+DB_SSL_CERT = os.getenv("DB_SSL_CERT", "db_control/cert/DigiCertGlobalRootCA.crt.pem")
 
-# SQLAlchemyエンジンの作成
-engine = create_engine(DATABASE_URL)
+DATABASE_URL = f"mysql+mysqlconnector://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+
+engine = create_engine(
+    DATABASE_URL,
+    connect_args={"ssl_ca": DB_SSL_CERT} 
+)
+
+if not database_exists(engine.url):
+    create_database(engine.url)
+
+Base = declarative_base()
+Base.metadata.create_all(bind=engine)
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+Base = declarative_base()
 
 def get_db():
-    """SQLAlchemyのセッションを取得する"""
     db = SessionLocal()
     try:
         yield db
