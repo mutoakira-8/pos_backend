@@ -23,27 +23,27 @@ def read_root():
 
 # 商品情報のモデル
 class ProductResponse(BaseModel):
-    CODE: str
-    NAME: str
-    PRICE: Optional[str]
+    code: str
+    name: str
+    price: Optional[str]
 
 @app.get("/api/product", response_model=ProductResponse)
 def get_product(code: str, db: Session = Depends(get_db)):
     """商品コードを受け取り、商品情報を返すAPI"""
-    stmt = text("SELECT NAME, PRICE FROM m_product_muto WHERE CODE = :code")
+    stmt = text("SELECT name, price FROM m_product_muto WHERE code = :code")
     product = db.execute(stmt, {"code": code}).fetchone()
 
     if product:
-        return ProductResponse(CODE=code, NAME=product[0], PRICE=str(product[1]))
+        return ProductResponse(code=code, name=product[0], price=str(product[1]))
     else:
-        return ProductResponse(CODE=code, NAME="商品がマスタ未登録です", PRICE=None)
+        return ProductResponse(code=code, name="商品がマスタ未登録です", price=None)
 
 # 購入データのモデル
 class PurchaseItem(BaseModel):
-    NAME: str
-    QUANTITY: int
-    PRICE: int
-    TOTAL: int
+    name: str
+    quantity: int
+    price: int
+    total: int
 
 class PurchaseRequest(BaseModel):
     items: List[PurchaseItem]
@@ -54,8 +54,8 @@ def save_purchase(request: PurchaseRequest, db: Session = Depends(get_db)):
     try:
         for item in request.items:
             db.execute(
-                text("INSERT INTO purchase_history (NAME, QUANTITY, PRICE, TOTAL) VALUES (:name, :quantity, :price, :total)"),  # 修正！
-                {"name": item.NAME, "quantity": item.QUANTITY, "price": item.PRICE, "total": item.TOTAL}
+                text("INSERT INTO purchase_history (name, quantity, price, total) VALUES (:name, :quantity, :price, :total)"),  # 修正！
+                {"name": item.name, "quantity": item.quantity, "price": item.price, "total": item.total}
             )
         db.commit()
         return {"message": "購入データを保存しました。"}
