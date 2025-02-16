@@ -1,6 +1,7 @@
-from sqlalchemy import create_engine, text  # ← text を追加
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, declarative_base
 import os
+import traceback
 from dotenv import load_dotenv
 
 # .env をロード
@@ -13,11 +14,15 @@ DB_NAME = os.getenv("DB_NAME")
 DB_USER = os.getenv("DB_USER")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
 
-# SSL 証明書のパスを環境変数から取得（デフォルトパス: backend/db_control/cert/DigiCertGlobalRootCA.crt.pem）
-DB_SSL_CERT = os.getenv("DB_SSL_CERT", os.path.join(os.getcwd(), "db_control", "cert", "DigiCertGlobalRootCA.crt.pem"))
+# SSL 証明書のパスを取得（.env に必須設定）
+DB_SSL_CERT = os.getenv("DB_SSL_CERT")
 
-# MySQL 接続 URL (pymysql を使用)
-DATABASE_URL = f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}?ssl_ca={DB_SSL_CERT}"
+# 証明書の存在確認
+if not DB_SSL_CERT or not os.path.isfile(DB_SSL_CERT):
+    raise FileNotFoundError(f"❌ 指定されたSSL証明書が見つかりません: {DB_SSL_CERT}")
+
+# 環境変数から接続URLを取得（ない場合は手動で作成）
+DATABASE_URL = os.getenv("DATABASE_URL", f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}?ssl_ca={DB_SSL_CERT}")
 
 # SQLAlchemy のエンジンを作成
 engine = create_engine(DATABASE_URL)
@@ -25,10 +30,11 @@ engine = create_engine(DATABASE_URL)
 # DB 接続テスト
 try:
     with engine.connect() as conn:
-        conn.execute(text("SELECT 1"))  # ← text() を明示的に使用
+        conn.execute(text("SELECT 1"))
     print("✅ データベース接続成功")
 except Exception as e:
     print(f"❌ データベース接続エラー: {e}")
+    print(traceback.format_exc())
 
 # ORM 用の設定
 Base = declarative_base()
