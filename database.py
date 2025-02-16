@@ -5,7 +5,7 @@ import traceback
 from dotenv import load_dotenv
 
 # .env をロード
-load_dotenv()
+load_dotenv(override=True)
 
 # 環境変数からDB接続情報を取得
 DB_HOST = os.getenv("DB_HOST")

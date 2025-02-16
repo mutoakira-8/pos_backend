@@ -13,7 +13,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000", "https://tech0-gen8-step4-pos-app-9.azurewebsites.net"],
     allow_credentials=True,
-    allow_methods=["GET", "POST"],
+    allow_methods=["*"],
     allow_headers=["*"],
 )
 
